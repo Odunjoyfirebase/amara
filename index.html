@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unified Content Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&family=Inter:wght@400;500;600&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --font-inter: 'Inter', sans-serif;
+            --font-lora: 'Lora', serif;
+            --font-playfair: 'Playfair Display', serif;
+        }
+        body {
+            font-family: var(--font-inter);
+            transition: background-color 0.3s;
+        }
+        .persona-faith-grace { background-color: #f8f9fa; color: #374151; }
+        .persona-love-action { background-color: #111827; color: #F3F4F6; }
+
+        h1, h2, h3 { font-family: var(--font-lora); }
+        .persona-love-action h1, .persona-love-action h2, .persona-love-action h3 { font-family: var(--font-playfair); }
+
+        .loading-spinner {
+            border: 4px solid rgba(255, 255, 255, 0.2);
+            border-left-color: #ffffff;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        .history-item:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05), 0 4px 6px -2px rgba(0,0,0,0.05); }
+        .history-item { transition: all 0.2s ease-in-out; }
+
+        /* Custom scrollbar */
+        #history-panel::-webkit-scrollbar { width: 8px; }
+        #history-panel::-webkit-scrollbar-track { background: #e5e7eb; border-radius: 10px; }
+        #history-panel::-webkit-scrollbar-thumb { background: #a3b8d1; border-radius: 10px; }
+        #history-panel::-webkit-scrollbar-thumb:hover { background: #8fa8c4; }
+        .persona-love-action #history-panel::-webkit-scrollbar-track { background: #1f2937; }
+        .persona-love-action #history-panel::-webkit-scrollbar-thumb { background: #4b5563; }
+        .persona-love-action #history-panel::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+
+        .suggestion-spinner { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background-color: rgba(233, 213, 255, 0.75); border-radius: 0.5rem; }
+
+        /* Love & Action Specific Styles */
+        .form-input-dark, .form-textarea-dark {
+            background-color: #1f2937;
+            border: 1px solid #374151;
+            color: #f3f4f6;
+            border-radius: 0.5rem;
+            padding: 0.75rem 1rem;
+            width: 100%;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .form-textarea-dark { min-height: 120px; }
+        .form-input-dark:focus, .form-textarea-dark:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5); }
+        
+        .btn { font-weight: 700; padding: 0.75rem 1.5rem; border-radius: 0.5rem; transition: background-color 0.2s, box-shadow 0.2s; cursor: pointer; border: none; display: inline-flex; align-items: center; justify-content: center; }
+        .btn-primary { background-color: #3b82f6; color: white; }
+        .btn-primary:hover { background-color: #2563eb; }
+        .btn-secondary { background-color: #4b5563; color: white; }
+        .btn-secondary:hover { background-color: #6b7280; }
+        .btn-download { background-color: #16a34a; color: white; }
+        .btn-download:hover { background-color: #15803d; }
+        
+        .loader-container { display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px dashed #374151; border-radius: 0.5rem; width: 100%; aspect-ratio: 1 / 1; }
+        .loader { border: 4px solid #374151; border-top: 4px solid #3b82f6; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(17, 24, 39, 0.8); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 50; }
+        .modal-content { background-color: #1f2937; padding: 2rem; border-radius: 0.75rem; width: 90%; max-width: 48rem; max-height: 90vh; overflow-y: auto; display: flex; flex-direction: column; }
+        .modal-content-light { background-color: #f8f9fa; color: #374151;}
+    </style>
+</head>
+<body class="persona-faith-grace">
+
+    <div class="flex h-screen">
+        <!-- Left Control Panel -->
+        <div id="left-panel" class="w-1/4 bg-white p-6 shadow-lg flex flex-col space-y-6 overflow-y-auto transition-colors">
+            <!-- Persona Switcher -->
+            <div>
+                <label for="persona-select" class="block text-sm font-bold text-gray-500 mb-2">PERSONA</label>
+                <select id="persona-select" class="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 font-semibold">
+                    <option value="faith_grace">Faith & Grace</option>
+                    <option value="love_action">Love & Action</option>
+                </select>
+            </div>
+
+            <!-- Persona-based Controls -->
+            <div id="controls-container" class="flex-grow flex flex-col">
+                <!-- Faith & Grace Controls -->
+                <div id="faith-grace-controls" class="space-y-4 flex flex-col flex-grow">
+                    <!-- Header -->
+                    <div class="flex items-center space-x-3">
+                         <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"></path><path d="M12 18.5c-3.59 0-6.5-2.91-6.5-6.5s2.91-6.5 6.5-6.5c1.74 0 3.34.68 4.57 1.79"></path><path d="M16 8v5h-5"></path></svg>
+                        <h1 class="text-2xl font-bold text-gray-800">Faith & Grace</h1>
+                    </div>
+                    <!-- Profile -->
+                    <div class="bg-blue-50 border border-blue-200 p-4 rounded-lg">
+                        <h2 class="font-bold text-blue-800 mb-2">Influencer Profile: Amara</h2>
+                        <p class="text-xs text-blue-700">A beautiful, tall Nigerian woman with a dramatic, sculptural hourglass silhouette. Her presence is graceful and inspiring.</p>
+                    </div>
+                    <!-- New Post -->
+                    <div class="flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        <h2 class="text-xl font-semibold text-gray-800">Create New Content</h2>
+                    </div>
+                    <div class="border-t pt-4">
+                        <button id="suggest-ideas-btn" class="w-full btn bg-purple-100 text-purple-700 hover:bg-purple-200">✨ Suggest Post Ideas</button>
+                    </div>
+                    <div>
+                        <label for="post-type" class="block text-sm font-medium text-gray-700 mb-1">Content Theme</label>
+                        <select id="post-type" class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            <option value="daily_verse">Daily Verse Image</option>
+                            <option value="inspirational_quote">Inspirational Quote Post</option>
+                            <option value="photo_set">Photo Set (3 Poses)</option>
+                            <option value="carousel">Carousel Post (2 Images)</option>
+                            <option value="lip_sync_reel">Lip-Sync Reel Series</option>
+                            <option value="sermon_reel">Sermon Snippet Reel</option>
+                            <option value="personal_testimony">Personal Testimony Post</option>
+                        </select>
+                    </div>
+                     <div>
+                        <label for="country-select" class="block text-sm font-medium text-gray-700 mb-1">Country</label>
+                        <select id="country-select" class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"></select>
+                    </div>
+                    <div>
+                        <label for="theme-input" class="block text-sm font-medium text-gray-700 mb-1">Topic / Theme</label>
+                        <div class="flex items-center gap-2">
+                            <input type="text" id="theme-input" class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" placeholder="e.g., 'Grace', 'Joy'">
+                            <button id="suggest-theme-btn" class="flex-shrink-0 bg-blue-100 hover:bg-blue-200 text-blue-700 p-2 rounded-lg shadow-sm transition-colors relative disabled:opacity-50 disabled:cursor-wait" title="Generate Random Theme">
+                               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="M20 12h2"/><path d="m17.66 17.66 1.41 1.41"/><path d="M12 20v2"/><path d="m6.34 17.66-1.41 1.41"/><path d="M4 12H2"/><path d="m6.34 6.34-1.41-1.41"/><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/></svg>
+                               <div id="suggestion-spinner" class="suggestion-spinner hidden"><div class="w-4 h-4 border-2 border-blue-700 border-t-transparent rounded-full animate-spin"></div></div>
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Wardrobe -->
+                    <div class="space-y-4 pt-2 border-t">
+                         <div class="flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
+                            <h3 class="text-lg font-semibold text-gray-800">Amara's Style</h3>
+                        </div>
+                         <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label for="clothing-select" class="block text-sm font-medium text-gray-700 mb-1">Attire</label>
+                                <select id="clothing-select" class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"></select>
+                            </div>
+                            <div>
+                                <label for="clothing-color-select" class="block text-sm font-medium text-gray-700 mb-1">Color</label>
+                                <select id="clothing-color-select" class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"></select>
+                            </div>
+                         </div>
+                         <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label for="hairstyle-select" class="block text-sm font-medium text-gray-700 mb-1">Hairstyle</label>
+                                <select id="hairstyle-select" class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"></select>
+                            </div>
+                             <div>
+                                <label for="hair-color-select" class="block text-sm font-medium text-gray-700 mb-1">Color</label>
+                                <select id="hair-color-select" class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"></select>
+                            </div>
+                         </div>
+                         <div>
+                            <label for="camera-shot-select" class="block text-sm font-medium text-gray-700 mb-1">Camera Shot</label>
+                            <select id="camera-shot-select" class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"></select>
+                         </div>
+                    </div>
+                    <div class="!mt-auto pt-4">
+                         <button id="generate-btn-fg" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition duration-300 ease-in-out transform hover:scale-105 flex items-center justify-center disabled:bg-blue-400 disabled:cursor-not-allowed" disabled>
+                            <span id="generate-btn-text-fg">Connecting...</span>
+                            <div id="generate-spinner-fg" class="loading-spinner ml-2 hidden"></div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Love & Action Controls -->
+                <div id="love-action-controls" class="hidden space-y-4 flex flex-col flex-grow">
+                    <!-- Header -->
+                    <div class="text-center">
+                        <h1 class="text-4xl font-bold text-white">@loveInspireAction</h1>
+                        <p class="text-lg text-gray-400 mt-2">Instagram Post Generator</p>
+                    </div>
+                    <!-- Form -->
+                    <div class="bg-gray-900 p-6 rounded-xl shadow-2xl space-y-4 flex-grow flex flex-col">
+                        <div>
+                            <label for="story-prompt" class="block text-xl font-semibold text-white mb-2">1. Describe the story</label>
+                            <textarea id="story-prompt" class="form-textarea-dark" placeholder="e.g., 'Volunteers cleaned up the local river...'"></textarea>
+                        </div>
+                        <div>
+                            <label for="partner-name" class="block text-xl font-semibold text-white mb-2">2. Partner Org (Optional)</label>
+                            <input type="text" id="partner-name" class="form-input-dark" placeholder="e.g., Green Earth Initiative">
+                        </div>
+                        <div class="!mt-auto pt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <button type="button" id="search-btn" class="btn btn-secondary">Find Real Stories</button>
+                            <button type="button" id="generate-btn-la" class="btn btn-primary">Generate Post</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <main id="main-content" class="flex-1 p-8 overflow-y-auto">
+            <div id="output-area" class="w-full max-w-4xl mx-auto">
+                <!-- Initial Welcome Message -->
+                <div id="welcome-message" class="text-center p-10 bg-white rounded-lg shadow">
+                    <h2 class="text-2xl font-semibold mb-2 text-gray-800">Welcome, Content Creator</h2>
+                    <p class="text-gray-500">Select a persona from the left panel to begin.</p>
+                </div>
+            </div>
+        </main>
+
+        <!-- Right History Panel -->
+        <div id="right-panel" class="w-1/4 bg-gray-100 p-6 flex flex-col transition-colors">
+            <div class="flex items-center gap-2 mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+                <h2 class="text-xl font-semibold text-gray-800">Content History</h2>
+            </div>
+            <div id="authStatus" class="text-center text-xs text-gray-600 mb-4 py-2 bg-white rounded-md">Connecting to database...</div>
+            <div id="history-panel" class="flex-grow overflow-y-auto space-y-4 pr-2">
+                <p id="history-placeholder" class="text-center text-gray-500 mt-10">Your saved content will appear here.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals and Message Boxes -->
+    <div id="messageBox" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full text-center">
+            <p id="messageText" class="text-lg font-medium text-gray-800 mb-4"></p>
+            <button id="closeMessageBox" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">OK</button>
+        </div>
+    </div>
+    <div id="search-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-6"><h2 class="text-2xl font-bold text-white">Real Volunteer Stories</h2><button id="close-modal-btn" class="text-gray-400 hover:text-white text-3xl leading-none">&times;</button></div>
+            <div id="search-results-list" class="space-y-4 mb-6"></div>
+            <div id="load-more-container"><button id="load-more-btn" class="btn btn-secondary"><span>Load More Stories</span></button></div>
+        </div>
+    </div>
+    <div id="ideas-modal" class="modal-overlay hidden">
+        <div class="modal-content modal-content-light">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">✨ Post Ideas</h2>
+                <button id="close-ideas-modal-btn" class="text-gray-400 hover:text-black text-3xl leading-none">&times;</button>
+            </div>
+            <div id="ideas-list" class="space-y-4 mb-6"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, query, onSnapshot, serverTimestamp, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- App Configuration ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = {
+  apiKey: "AIzaSyCdgR9L77ZUUrD_V2vbsxJOFCAv4cLaNv0",
+  authDomain: "web-app-f3a7e.firebaseapp.com",
+  projectId: "web-app-f3a7e",
+  storageBucket: "web-app-f3a7e.firebasestorage.app",
+  messagingSenderId: "111921538040",
+  appId: "1:111921538040:web:6e555662b38357a966ec0d",
+  measurementId: "G-XE1JZY2DFB"
+};
+        const apiKey = "AIzaSyAXltq-XGY26FFalQVMvl5EjsWvuggdGgs"; // Provided by Canvas environment
+
+        let app, db, auth, userId;
+        let isAuthReady = false;
+        let unsubscribeFromHistory;
+        let currentPersona = 'faith_grace';
+        
+        // --- DATA & PROMPTS ---
+        const FAITH_GRACE_PROMPT = "A beautiful, tall, Nigerian young woman named Amara, an inspiring Christian evangelist. She has a **permanent and dramatic high-fashion hourglass silhouette, defined by sculptural curves, a very small waist, and voluminous hips and bust**. She has rich brown skin, a graceful oval face with high cheekbones, soft, fuller lips, and **prominent, beautiful dimples that are visible when she smiles**. This is the *exact same person*, the *same individual*, with **identical facial features and an unwavering facial structure** in every single image. High-resolution, photorealistic, professional photography style, vibrant colors, natural lighting, shot with a prime lens, shallow depth of field.";
+        const WARDROBE = {
+            clothing: [
+                { name: "Asymmetrical Embellished Gown", description: "a stunning, floor-length mermaid gown in a deep burgundy color, heavily embellished with intricate beadwork, featuring an asymmetrical neckline and a sculptural detail on one shoulder" },
+                { name: "Gold-Collar Sheath Dress", description: "a chic burgundy sheath dress with long sleeves and a statement gold-embellished V-neck collar" },
+                { name: "Cape Sleeve Sheath Dress", description: "a vibrant red sheath dress with dramatic, flowing cape sleeves, cinched with a statement belt" },
+                { name: "Pleated A-Line Dress", description: "a beautiful burgundy A-line dress with flutter sleeves and an elegantly pleated, asymmetrical wrap skirt" },
+                { name: "Ruffle-Shoulder Pencil Dress", description: "a striking red pencil dress with a V-neck and an artistic, layered ruffle detail on the shoulder" },
+                { name: "Two-Tone Scalloped Dress", description: "a modern two-tone dress with a navy blue long-sleeved top and a white pencil skirt, joined by an elegant scalloped edge" },
+                { name: "Ruched Asymmetrical Dress", description: "a chic black dress with short sleeves, featuring sophisticated ruching down the front that creates a draped, asymmetrical hemline" },
+                { name: "Color-Block Sculpted Dress", description: "a modern color-block dress in beige and black, with a unique sculpted off-the-shoulder sleeve design" },
+                { name: "Color-Block Batwing Dress", description: "a stylish color-block dress featuring one black fitted sleeve and one pink dolman-style batwing sleeve" },
+                { name: "Puff-Sleeve Color-Block Dress", description: "a vibrant magenta dress with a black color-block hem, featuring a high buttoned neck and dramatic, textured puff sleeves" }
+            ],
+             colors: [
+                { name: "Let AI Decide", description: "" },
+                { name: "Royal Purple", description: "in a deep royal purple" },
+                { name: "Emerald Green", description: "in a rich emerald green" },
+                { name: "Navy Blue", description: "in a sophisticated navy blue" },
+                { name: "Classic Black", description: "in a timeless, classic black" },
+                { name: "Crisp White", description: "in a clean, crisp white" },
+                { name: "Soft Pastel Pink", description: "in a soft pastel pink" },
+                { name: "Burgundy", description: "in a rich burgundy wine color" },
+                { name: "Gold Metallic", description: "in a shimmering gold metallic fabric" },
+                { name: "Silver Metallic", description: "in a shining silver metallic fabric" },
+                { name: "Cream / Ivory", description: "in a luxurious cream or ivory" }
+            ],
+            hairstyles: [
+                 { name: "Sleek High Ponytail", description: "a sleek, long high ponytail" },
+                 { name: "Intricate Braided Updo", description: "an intricate, artistic braided updo" },
+                 { name: "Voluminous Afro", description: "a large, perfectly shaped voluminous afro" },
+                 { name: "Bone-Straight Wig", description: "a long, bone-straight wig with a center part" },
+                 { name: "Elegant Gele Headwrap", description: "an elegant, expertly tied gele headwrap" },
+                 { name: "Fulani Braids", description: "long Fulani-style braids with signature beads and gold cuffs" },
+                 { name: "Crown Braid Updo", description: "a beautiful crown braid updo, styled like a halo" },
+                 { name: "Soft Flowing Curls", description: "soft, flowing curls cascading over her shoulders" },
+                 { name: "Glamorous Side-Swept Waves", description: "glamorous, old Hollywood-style waves swept to one side" },
+                 { name: "Defined Twist-Out Afro", description: "a beautifully defined twist-out afro with perfect coils" },
+                 { name: "Low Bun with Pearl Pins", description: "a sleek and elegant low chignon bun adorned with delicate pearl pins" }
+            ],
+            hairColors: [
+                { name: "Natural Black", description: "in a natural black color" },
+                { name: "Honey Blonde", description: "in a warm honey blonde color" },
+                { name: "Deep Burgundy", description: "in a deep burgundy red color" },
+                { name: "Platinum Blonde", description: "in a bold platinum blonde" }
+            ],
+            countries: ["USA", "United Kingdom", "Canada", "Australia", "New Zealand", "Ireland", "South Africa", "Jamaica", "Barbados", "Ghana"],
+            cameraShots: [
+                { name: "Full Body Shot", description: "A full body shot capturing the entire outfit." },
+                { name: "Medium Shot", description: "A medium shot from the waist up." },
+                { name: "Dramatic Close-up", description: "A dramatic close-up on her face and expression." },
+                { name: "Candid Walking Shot", description: "A candid shot of her walking, showing movement in the gown." },
+                { name: "Low Angle Shot", description: "A powerful low-angle shot making her look statuesque." }
+            ]
+        };
+        const NEWS_STORIES = [
+            { "title": "2025 Community Project Awards winners announced", "url": "https://urc.org.uk/2025-community-project-awards-winners-announced/", "snippet": "The United Reformed Church announces winners of its Community Awards, including Dove Dementia Cafe and Food with Friends, which offer vital community support through volunteers." },
+            { "title": "Missionaries in Action: Service That Transforms Communities", "url": "https://newsroom.churchofjesuschrist.org/article/missionaries-in-action-service-that-transforms-communities", "snippet": "In Pasadena, California, the Church hosted a six-day wildfire disaster recovery hub, collaborating with the American Red Cross to support 2,500 households affected by recent wildfires." },
+            { "title": "Christian Aid Week 2025", "url": "https://www.christianaid.org.uk/appeals/key-appeals/christian-aid-week", "snippet": "Your support this Christian Aid Week helps fund vital tools and training, so farmers in communities like Aurelia's in Guatemala can fight the effects of the climate crisis and escape hunger." },
+            { "title": "Empowering Tomorrow's Leaders: The Inspiring Story of Young Volunteers", "url": "https://www.kindcraft.org/post/empowering-tomorrow-s-leaders-the-inspiring-story-of-young-volunteers-making-a-difference", "snippet": "Young volunteers gathered to assemble 1,000 lunch sacks for people in need served through Metro Lutheran Ministry, showing incredible teamwork and compassion." },
+            { "title": "ACN provides summer camps and youth activities in 15 countries", "url": "https://www.churchinneed.org/acn-provides-summer-camps-and-activities-for-almost-100000-children-in-15-countries/", "snippet": "Almost 100,000 children from poor or war-stricken communities are benefiting from summer camps and activities funded by pontifical charity Aid to the Church in Need (ACN) this summer." },
+            { "title": "The Association of Related Churches Shares Update on 2024 Giveaway Winner", "url": "https://www.businesswire.com/news/home/20250707935464/en/The-Association-of-Related-Churches-Shares-Update-on-2024-Giveaway-Winner-at-2025-ARC-Conference", "snippet": "Trailside Church, a 2024 giveaway winner, used its gift to pay off debt, serve its community after a hurricane, and support future church planters." },
+            { "title": "Inspiring Stories of Community Service and Volunteerism", "url": "https://gregoryjhoag.com/inspiring-stories-of-community-service-and-volunteerism/", "snippet": "A retired schoolteacher started a tutoring program for underprivileged children, which has now grown into a thriving nonprofit supported by a network of volunteers." },
+            { "title": "National Volunteer Week 2025: Connecting Communities Through Creativity", "url": "https://www.mercycare.com.au/news-and-information/national-volunteer-week-2025", "snippet": "Ibrahim, a volunteer at MercyCare's Residential Aged Care Home, uses his artistic flair and technical skill to spark creativity, laughter, and connection among residents." },
+            { "title": "First Person: My journey as a UN Volunteer in Damascus", "url": "https://www.unv.org/story-type/blogs", "snippet": "As a Refugee Status Determination Officer, I help people fleeing war and persecution find protection. My job is to hear their stories and help decide if they qualify for refugee status." },
+            { "title": "How GridPolaris Helps Train Homeless Shelter Volunteers", "url": "https://www.socialroots.ai/blog/vms/homeless-shelter-volunteers", "snippet": "Homeless shelter volunteers are a vital part of support systems. GridPolaris introduces a structured digital platform to strengthen how nonprofits train and manage these crucial volunteers." },
+            { "title": "Bond between St. Mike's and a Deep South community fosters impactful service experiences", "url": "https://www.smcvt.edu/about-smc/news/2025/july/bond-between-st-mikes-and-a-deep-south-community-fosters-impactful-service-experiences/", "snippet": "Saint Michael's College student volunteers help staff members from the Edmundite Southern Missions in Selma, Alabama, make meals at the Bosco Nutrition Center during a service trip." },
+            { "title": "In the wake of Myanmar earthquake, a mother finds strength in helping others", "url": "https://reliefweb.int/report/myanmar/wake-myanmar-earthquake-mother-finds-strength-helping-others-ifrc", "snippet": "Earthquake survivor Yadanar Yu Hlaing Kyuu copes with the trauma of losing her home by volunteering to help in the camp where she and 126 other families have been living." },
+        ];
+        let searchPage = 1;
+
+
+        // --- DOM Elements ---
+        const body = document.body;
+        const leftPanel = document.getElementById('left-panel');
+        const mainContent = document.getElementById('main-content');
+        const rightPanel = document.getElementById('right-panel');
+        const personaSelect = document.getElementById('persona-select');
+        const faithGraceControls = document.getElementById('faith-grace-controls');
+        const loveActionControls = document.getElementById('love-action-controls');
+        const outputArea = document.getElementById('output-area');
+        const welcomeMessage = document.getElementById('welcome-message');
+        const historyPanel = document.getElementById('history-panel');
+        const historyPlaceholder = document.getElementById('history-placeholder');
+        const authStatus = document.getElementById('authStatus');
+
+        // FG Elements
+        const generateBtnFg = document.getElementById('generate-btn-fg');
+        const generateBtnTextFg = document.getElementById('generate-btn-text-fg');
+        const generateSpinnerFg = document.getElementById('generate-spinner-fg');
+        const themeInput = document.getElementById('theme-input');
+        const suggestThemeBtn = document.getElementById('suggest-theme-btn');
+        const suggestIdeasBtn = document.getElementById('suggest-ideas-btn');
+        const suggestionSpinner = document.getElementById('suggestion-spinner');
+        const postTypeSelect = document.getElementById('post-type');
+        const clothingSelect = document.getElementById('clothing-select');
+        const clothingColorSelect = document.getElementById('clothing-color-select');
+        const hairstyleSelect = document.getElementById('hairstyle-select');
+        const hairColorSelect = document.getElementById('hair-color-select');
+        const countrySelect = document.getElementById('country-select');
+        const cameraShotSelect = document.getElementById('camera-shot-select');
+
+        // LA Elements
+        const generateBtnLa = document.getElementById('generate-btn-la');
+        const searchBtn = document.getElementById('search-btn');
+        const storyPromptEl = document.getElementById('story-prompt');
+        const partnerNameEl = document.getElementById('partner-name');
+        
+        // Modals & Messages
+        const messageBox = document.getElementById('messageBox');
+        const messageText = document.getElementById('messageText');
+        const closeMessageBox = document.getElementById('closeMessageBox');
+        const searchModal = document.getElementById('search-modal');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        const searchResultsList = document.getElementById('search-results-list');
+        const loadMoreBtn = document.getElementById('load-more-btn');
+        const ideasModal = document.getElementById('ideas-modal');
+        const closeIdeasModalBtn = document.getElementById('close-ideas-modal-btn');
+        const ideasList = document.getElementById('ideas-list');
+
+        // --- Initial Setup ---
+        document.addEventListener('DOMContentLoaded', () => {
+            try {
+                populateSelections();
+                initializeFirebase();
+                setupEventListeners();
+                updatePersonaUI();
+            } catch (error) {
+                console.error("A critical error occurred on startup:", error);
+                document.body.innerHTML = `<div class="p-8 text-red-500 bg-red-100">A critical error occurred. Please check the console (Right-click > Inspect > Console) for details.</div>`;
+            }
+        });
+
+        // --- Event Listeners ---
+        function setupEventListeners() {
+            personaSelect.addEventListener('change', (e) => {
+                currentPersona = e.target.value;
+                updatePersonaUI();
+            });
+            
+            generateBtnFg.addEventListener('click', handleGeneration);
+            generateBtnLa.addEventListener('click', handleGeneration);
+            suggestThemeBtn.addEventListener('click', handleSuggestThemeClick);
+            suggestIdeasBtn.addEventListener('click', handleSuggestIdeasClick);
+            
+            // LA Specific Listeners
+            searchBtn.addEventListener('click', handleSearchClick);
+            loadMoreBtn.addEventListener('click', handleLoadMoreClick);
+            closeModalBtn.addEventListener('click', () => searchModal.classList.add('hidden'));
+            searchResultsList.addEventListener('click', handleUseStoryClick);
+            document.addEventListener('click', handleCopyClick);
+            document.addEventListener('click', handleAnalyzeImpactClick);
+            closeMessageBox.addEventListener('click', () => messageBox.classList.add('hidden'));
+            
+            // Ideas Modal Listeners
+            closeIdeasModalBtn.addEventListener('click', () => ideasModal.classList.add('hidden'));
+            ideasModal.addEventListener('click', (e) => {
+                const useButton = e.target.closest('.use-idea-btn');
+                if (useButton) {
+                    themeInput.value = useButton.dataset.title;
+                    ideasModal.classList.add('hidden');
+                }
+            });
+        }
+
+        // --- Persona & UI Management ---
+        function updatePersonaUI() {
+            body.className = `persona-${currentPersona.replace('_', '-')}`;
+            const isFg = currentPersona === 'faith_grace';
+
+            faithGraceControls.classList.toggle('hidden', !isFg);
+            loveActionControls.classList.toggle('hidden', isFg);
+            
+            const darkBg = 'bg-gray-900', lightBg = 'bg-white';
+            const darkText = 'text-gray-800', lightText = 'text-gray-200';
+
+            leftPanel.classList.toggle(darkBg, !isFg);
+            leftPanel.classList.toggle(lightBg, isFg);
+            rightPanel.classList.toggle('bg-gray-800', !isFg);
+            rightPanel.classList.toggle('bg-gray-100', isFg);
+            mainContent.classList.toggle('bg-gray-950', !isFg);
+            mainContent.classList.toggle('bg-gray-50', isFg);
+
+            document.querySelectorAll('#left-panel h1, #left-panel h2, #left-panel h3, #left-panel label, #right-panel h2').forEach(el => {
+                el.classList.toggle(darkText, isFg);
+                el.classList.toggle(lightText, !isFg);
+            });
+            
+            outputArea.innerHTML = '';
+            outputArea.appendChild(welcomeMessage);
+            welcomeMessage.querySelector('h2').textContent = isFg ? "Welcome, Digital Evangelist" : "Welcome, Storyteller";
+            welcomeMessage.querySelector('p').textContent = isFg ? "Select a content theme to begin." : "Describe a story of volunteer action to get started.";
+            welcomeMessage.classList.toggle('bg-white', isFg);
+            welcomeMessage.classList.toggle('bg-gray-900', !isFg);
+            welcomeMessage.classList.toggle('text-gray-800', isFg);
+            welcomeMessage.classList.toggle('text-gray-400', !isFg);
+        }
+
+        function populateSelections() {
+            const populate = (selectEl, data) => {
+                selectEl.innerHTML = '';
+                data.forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = item.description !== undefined ? item.description : item;
+                    option.textContent = item.name || item;
+                    selectEl.appendChild(option);
+                });
+            };
+            populate(clothingSelect, WARDROBE.clothing);
+            populate(clothingColorSelect, WARDROBE.colors);
+            populate(hairstyleSelect, WARDROBE.hairstyles);
+            populate(hairColorSelect, WARDROBE.hairColors);
+            populate(countrySelect, WARDROBE.countries);
+            populate(cameraShotSelect, WARDROBE.cameraShots);
+        }
+
+        // --- Core Generation Logic ---
+        async function handleGeneration() {
+            if (!isAuthReady) {
+                showMessageBox("Database not ready. Please wait a moment.");
+                return;
+            }
+            welcomeMessage.classList.add('hidden');
+            outputArea.innerHTML = '';
+
+            if (currentPersona === 'faith_grace') {
+                await generateFaithGraceContent();
+            } else {
+                await generateLoveActionContent();
+            }
+        }
+        
+        async function generateFaithGraceContent() {
+            toggleLoading(true, 'Generating...', 'fg');
+            outputArea.innerHTML = `<div class="text-center p-10 bg-white rounded-lg shadow"><div class="loading-spinner w-10 h-10 mx-auto border-blue-500 border-l-transparent"></div><p class="mt-4 text-gray-600">Creating a concept...</p></div>`;
+
+            try {
+                const postType = postTypeSelect.value;
+                const theme = themeInput.value.trim() || 'Faith';
+                const clothing = clothingSelect.value + " " + clothingColorSelect.value;
+                const hairstyle = hairstyleSelect.value + " " + hairColorSelect.value;
+                const country = countrySelect.value;
+                const cameraShot = cameraShotSelect.value;
+
+                const detailsPrompt = createFgDetailsPrompt(postType, theme, clothing, hairstyle, country, cameraShot);
+                const details = await callTextAPI(detailsPrompt, true);
+
+                let finalContent = { ...details, postType, theme, persona: 'faith_grace' };
+                let imageUrls = [];
+                let fullPrompts = [];
+                
+                toggleLoading(true, 'Generating Images...', 'fg');
+
+                // Special handling for verse/quote to generate Amara pic + text graphic
+                if (postType === 'daily_verse' || postType === 'inspirational_quote') {
+                    const amaraImagePrompt = `${FAITH_GRACE_PROMPT} ${details.image_prompt}`;
+                    fullPrompts.push(amaraImagePrompt);
+                    
+                    const text = details.verse_text || `“${details.quote_text}”`;
+                    const citation = details.verse_citation || (details.quote_text ? 'Inspirational Quote' : '');
+
+                    const [amaraImageUrl, textGraphicUrl] = await Promise.all([
+                        callImageAPI(amaraImagePrompt),
+                        createFgTextGraphic(text, citation)
+                    ]);
+
+                    imageUrls.push(amaraImageUrl, textGraphicUrl);
+                
+                // Handling for other image-based post types
+                } else if (details.image_prompts || details.image_prompt) {
+                    const imagePrompts = details.image_prompts || [details.image_prompt];
+                    const imagePromises = imagePrompts.map(prompt => {
+                        const fullImagePrompt = `${FAITH_GRACE_PROMPT} ${prompt}`;
+                        fullPrompts.push(fullImagePrompt);
+                        return callImageAPI(fullImagePrompt);
+                    });
+                    const resolvedImageUrls = await Promise.all(imagePromises);
+                    imageUrls.push(...resolvedImageUrls);
+                }
+
+                finalContent.imageUrls = imageUrls;
+                finalContent.fullPrompts = fullPrompts;
+
+                await saveContent(finalContent);
+                renderOutput(finalContent);
+
+            } catch (error) {
+                console.error("FG Generation failed:", error);
+                showMessageBox(`An error occurred: ${error.message}`);
+                outputArea.innerHTML = `<div class="text-center text-red-500 p-10 bg-white rounded-lg shadow"><h2>Generation Failed</h2><p>${error.message}</p></div>`;
+            } finally {
+                toggleLoading(false, 'Generate Content', 'fg');
+            }
+        }
+
+        async function generateLoveActionContent() {
+            const storyPrompt = storyPromptEl.value;
+            if (!storyPrompt.trim()) {
+                showMessageBox("Please describe a story of volunteer action to start.");
+                return;
+            }
+            toggleLoading(true, 'Generating...', 'la');
+            renderLaOutputSkeleton();
+
+            try {
+                const partnerName = partnerNameEl.value;
+                const textPrompt = createLaTextPrompt(storyPrompt, partnerName);
+                const imagePrompt = `A cinematic, hopeful, 1:1 square photo celebrating the act of volunteering, showing collaboration and positive impact. Emotionally resonant style. Based on: ${storyPrompt}`;
+
+                const [imageResult, textResult] = await Promise.allSettled([
+                    callImageAPI(imagePrompt),
+                    callTextAPI(textPrompt, true)
+                ]);
+
+                let finalContent = { storyPrompt, partnerName, persona: 'love_action' };
+
+                if (imageResult.status === 'fulfilled') {
+                    finalContent.imageUrl = imageResult.value;
+                }
+
+                if (textResult.status === 'fulfilled') {
+                    finalContent = { ...finalContent, ...textResult.value };
+                    const textHook = finalContent.textHook || "Action into Hope";
+                    finalContent.textGraphicUrl = await createLaTextGraphic(textHook);
+                }
+                
+                await saveContent(finalContent);
+                renderOutput(finalContent);
+
+
+            } catch (error) {
+                console.error("LA Generation failed:", error);
+                showMessageBox(`An error occurred: ${error.message}`);
+                outputArea.innerHTML = `<div class="text-center text-red-500 p-10 bg-gray-900 rounded-lg shadow"><h2>Generation Failed</h2><p>${error.message}</p></div>`;
+            } finally {
+                toggleLoading(false, 'Generate Post', 'la');
+            }
+        }
+        
+        // --- API Call Functions ---
+        async function callTextAPI(prompt, expectJson = true) {
+            const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
+            if (expectJson) {
+                payload.generationConfig = { responseMimeType: "application/json" };
+            }
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+            const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            if (!response.ok) {
+                const errorBody = await response.text();
+                console.error("Text API Error:", errorBody);
+                throw new Error(`Text generation API request failed: ${response.statusText}`);
+            }
+            const result = await response.json();
+            const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (!text) throw new Error("Invalid response from text service.");
+            return expectJson ? JSON.parse(text) : text;
+        }
+
+        async function callImageAPI(prompt) {
+            const payload = { instances: [{ prompt }], parameters: { "sampleCount": 1 } };
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
+            const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            if (!response.ok) {
+                const errorBody = await response.text();
+                console.error("Image API Error:", errorBody);
+                throw new Error(`Image generation API failed: ${response.statusText}`);
+            }
+            const result = await response.json();
+            if (result.predictions?.[0]?.bytesBase64Encoded) { return `data:image/png;base64,${result.predictions[0].bytesBase64Encoded}`; }
+            throw new Error("No image data received from API. It may have been blocked by safety policies.");
+        }
+
+        // --- Prompt Creation ---
+        function createFgDetailsPrompt(postType, theme, clothing, hairstyle, country, cameraShot) {
+            const themeInstruction = theme ? `The user-provided theme is "${theme}".` : "Please choose a relevant, uplifting Christian theme.";
+            const common = `You are a content creator for Amara, a Nigerian Christian evangelist. Base description: "${FAITH_GRACE_PROMPT}". Attire: "${clothing}". Hairstyle: "${hairstyle}". Setting: ${country}. Camera Shot: "${cameraShot}". ${themeInstruction}. Return ONLY raw JSON.`;
+            
+            let typeSpecific = '';
+            const hashtagInstruction = ` "hashtags" (an array of 5-7 relevant hashtag words, WITHOUT the '#', e.g., ["VerseOfTheDay", "Faith"])`;
+
+            switch (postType) {
+                case 'daily_verse': typeSpecific = `Generate JSON for a DAILY VERSE post with keys: "title", "verse_text", "verse_citation", "caption",${hashtagInstruction}, "image_prompt".`; break;
+                case 'inspirational_quote': typeSpecific = `Generate JSON for an INSPIRATIONAL QUOTE post with keys: "title", "quote_text", "caption",${hashtagInstruction}, "image_prompt".`; break;
+                case 'photo_set': typeSpecific = `Generate JSON for a PHOTO SET with keys: "title", "caption",${hashtagInstruction}, and an array "image_prompts" with THREE prompts.`; break;
+                case 'carousel': typeSpecific = `Generate JSON for a CAROUSEL post with keys: "title", "caption",${hashtagInstruction}, and an array "image_prompts" with TWO prompts.`; break;
+                case 'lip_sync_reel': typeSpecific = `Generate JSON for a LIP-SYNC REEL with keys: "title", "spoken_script",${hashtagInstruction}, and an array "image_prompts" with FIVE prompts simulating speech.`; break;
+                case 'sermon_reel': typeSpecific = `Generate JSON for a SERMON REEL with keys: "title", "audio_suggestion",${hashtagInstruction}, and an array "script" with a 3-part video script. This type does not generate an image.`; break;
+                case 'personal_testimony': typeSpecific = `Generate JSON for a PERSONAL TESTIMONY with keys: "title", "caption" (60-100 words),${hashtagInstruction}, and "image_prompt".`; break;
+            }
+            return `${common} ${typeSpecific}`;
+        }
+        
+        function createLaTextPrompt(prompt, partnerName) {
+            let textPrompt = `You are a content creator for '@loveInspireAction', focused on celebrating volunteers. Based on this story: "${prompt}", generate a JSON object with three keys: "textHook" (3-7 words), "caption" (80-120 words ending with a CTA to follow @loveInspireAction), and "hashtags" (an array of 7-10 SEO hashtags, each starting with #).`;
+            if (partnerName) {
+                textPrompt += ` The partner is "${partnerName}". Tag them in the caption and include a hashtag for them.`;
+            }
+            return textPrompt;
+        }
+
+        // --- Rendering & UI Helpers ---
+        function renderOutput(content) {
+            welcomeMessage.classList.add('hidden');
+            if (content.persona === 'faith_grace') {
+                renderFgOutput(content);
+            } else if (content.persona === 'love_action') {
+                renderLaOutput(content);
+            }
+        }
+        
+        function renderFgOutput(content) {
+            let outputHTML = `<div class="bg-white p-6 rounded-lg shadow-lg space-y-6">`;
+            const imageUrls = content.imageUrls || [];
+            
+            if (imageUrls.length > 0) {
+                outputHTML += `<div class="grid grid-cols-${imageUrls.length > 1 ? 2 : 1} gap-4">`;
+                imageUrls.forEach(url => {
+                    outputHTML += `<div class="rounded-lg overflow-hidden shadow-md"><img src="${url}" class="w-full"></div>`;
+                });
+                outputHTML += `</div>`;
+                
+                outputHTML += `<div class="flex flex-wrap gap-4 mt-4">`;
+                imageUrls.forEach((url, index) => {
+                    outputHTML += `<a href="${url}" download="faith-grace-post_${Date.now()}_${index + 1}.png" class="flex-1 text-center bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">Download Image ${index + 1}</a>`;
+                });
+                outputHTML += `</div>`;
+            }
+
+            if (content.title) outputHTML += `<h3 class="font-bold text-2xl text-gray-800">${content.title}</h3>`;
+            
+            if (content.caption) {
+                outputHTML += `
+                    <div>
+                        <label class="font-semibold block mb-1">Generated Caption</label>
+                        <div class="relative">
+                            <textarea readonly class="w-full p-3 bg-gray-50 border rounded-md resize-none text-gray-800">${content.caption}</textarea>
+                            <button class="copy-btn absolute top-2 right-2 p-1 bg-gray-200 rounded hover:bg-gray-300" data-copy-text="${escapeHTML(content.caption)}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                            </button>
+                        </div>
+                    </div>`;
+            }
+
+            if (content.hashtags && Array.isArray(content.hashtags)) {
+                const hashtagsText = content.hashtags.map(h => `#${h.replace(/#/g, '')}`).join(' ');
+                 outputHTML += `
+                    <div>
+                        <label class="font-semibold block mb-1">Generated Hashtags</label>
+                         <div class="relative">
+                            <textarea readonly class="w-full p-2 bg-gray-50 border rounded-md resize-none">${hashtagsText}</textarea>
+                             <button class="copy-btn absolute top-2 right-2 p-1 bg-gray-200 rounded hover:bg-gray-300" data-copy-text="${escapeHTML(hashtagsText)}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                            </button>
+                        </div>
+                    </div>`;
+            }
+
+            if (content.fullPrompts && content.fullPrompts.length > 0) {
+                outputHTML += `<details><summary class="font-semibold cursor-pointer text-gray-600">View Image Prompt(s)</summary><div class="mt-2 space-y-2">`;
+                content.fullPrompts.forEach((prompt, i) => {
+                    outputHTML += `<div><label class="text-sm font-medium text-gray-500">Prompt ${i + 1}:</label><textarea readonly class="w-full p-2 bg-gray-100 border rounded-md text-xs resize-none">${prompt}</textarea></div>`;
+                });
+                outputHTML += `</div></details>`;
+            }
+            outputHTML += `</div>`;
+            outputArea.innerHTML = outputHTML;
+        }
+
+        function renderLaOutput(content) {
+            renderLaOutputSkeleton();
+            if (content.imageUrl) {
+                document.getElementById('image-container-square').innerHTML = `<img src="${content.imageUrl}" alt="AI generated square image" class="w-full object-cover rounded-lg shadow-lg">`;
+                document.getElementById('download-image-container').innerHTML = `<a href="${content.imageUrl}" download="loveinspireaction-photo.png" class="btn btn-download w-full">Download Photo</a>`;
+            } else {
+                 document.getElementById('image-container-square').innerHTML = `<p class="text-red-400 text-center p-4">Image failed.</p>`;
+            }
+            if (content.textGraphicUrl) {
+                document.getElementById('text-graphic-container').innerHTML = `<img src="${content.textGraphicUrl}" alt="Generated text graphic" class="w-full object-cover rounded-lg shadow-lg">`;
+                document.getElementById('download-text-graphic-container').innerHTML = `<a href="${content.textGraphicUrl}" download="loveinspireaction-graphic.png" class="btn btn-download w-full">Download Graphic</a>`;
+            } else {
+                 document.getElementById('text-graphic-container').innerHTML = `<p class="text-red-400 text-center p-4">Graphic failed.</p>`;
+            }
+            document.getElementById('text-loader').classList.add('hidden');
+            const textContentContainer = document.getElementById('text-content-la');
+            textContentContainer.classList.remove('hidden');
+            textContentContainer.innerHTML = renderLaTextContent(content);
+
+            // Add AI Insights section
+            const insightsContainer = document.createElement('div');
+            insightsContainer.id = 'insights-container';
+            insightsContainer.className = 'mt-8 p-6 bg-gray-900 rounded-xl shadow-2xl';
+            insightsContainer.innerHTML = `
+                <h3 class="text-2xl font-bold text-white mb-4">✨ AI-Powered Insights</h3>
+                <div id="impact-analysis-content">
+                    <button id="analyze-impact-btn" class="btn btn-secondary w-full" data-story="${escapeHTML(content.storyPrompt)}">Analyze Potential Impact</button>
+                </div>
+            `;
+            document.getElementById('la-output-section').appendChild(insightsContainer);
+        }
+
+        function renderLaOutputSkeleton() {
+            outputArea.innerHTML = `
+                <div id="la-output-section" class="space-y-8">
+                    <div>
+                        <h2 class="text-2xl font-bold text-white mb-4">Generated Visuals</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                            <div class="space-y-4">
+                                <h3 class="text-lg font-semibold text-center mb-2">Photo Post (1:1)</h3>
+                                <div id="image-container-square"><div class="loader-container"><div class="loader"></div></div></div>
+                                <div id="download-image-container"></div>
+                            </div>
+                            <div class="space-y-4">
+                                <h3 class="text-lg font-semibold text-center mb-2">Text Graphic (1:1)</h3>
+                                <div id="text-graphic-container"><div class="loader-container"><div class="loader"></div></div></div>
+                                <div id="download-text-graphic-container"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <h2 class="text-2xl font-bold text-white mb-4">Generated Content</h2>
+                        <div id="text-loader" class="text-center text-gray-400"><p>Loading content...</p></div>
+                        <div id="text-content-la" class="hidden bg-gray-900 p-6 rounded-xl shadow-2xl space-y-6"></div>
+                    </div>
+                </div>`;
+        }
+
+        function renderLaTextContent(content) {
+            const textHook = content.textHook || "Action into Hope";
+            const caption = content.caption || "";
+            const hashtags = content.hashtags || [];
+            return `
+                <div>
+                    <div class="flex justify-between items-center mb-2"><h3 class="text-lg font-semibold">Image Text Hook</h3><button class="copy-btn" data-copy-text="${escapeHTML(textHook)}">Copy</button></div>
+                    <p class="text-2xl font-bold text-center bg-gray-800 p-4 rounded-md">${escapeHTML(textHook)}</p>
+                </div>
+                <hr class="border-gray-700">
+                <div>
+                    <div class="flex justify-between items-center mb-2"><h3 class="text-lg font-semibold">Promotional Caption</h3><button class="copy-btn" data-copy-text="${escapeHTML(caption)}">Copy</button></div>
+                    <p class="text-gray-300 whitespace-pre-wrap">${escapeHTML(caption)}</p>
+                </div>
+                <hr class="border-gray-700">
+                <div>
+                    <div class="flex justify-between items-center mb-2"><h3 class="text-lg font-semibold">SEO Hashtags</h3><button class="copy-btn" data-copy-text="${hashtags.join(' ')}">Copy</button></div>
+                    <p class="text-gray-400">${hashtags.join(' ')}</p>
+                </div>
+            `;
+        }
+        
+        function wrapText(context, text, maxWidth) {
+            let words = text.split(' ');
+            let lines = [];
+            let currentLine = words[0] || '';
+
+            for (let i = 1; i < words.length; i++) {
+                let word = words[i];
+                let width = context.measureText(currentLine + " " + word).width;
+                if (width < maxWidth) {
+                    currentLine += " " + word;
+                } else {
+                    lines.push(currentLine);
+                    currentLine = word;
+                }
+            }
+            lines.push(currentLine);
+            return lines;
+        }
+
+        function createFgTextGraphic(text, citation) {
+            return new Promise((resolve) => {
+                const canvas = document.createElement('canvas');
+                canvas.width = 1080;
+                canvas.height = 1350; // 4:5 aspect ratio
+                const ctx = canvas.getContext('2d');
+
+                ctx.fillStyle = '#f4f8ff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                const maxWidth = canvas.width * 0.8;
+
+                const mainFontSize = 70;
+                const mainLineHeight = 90;
+                ctx.font = `italic ${mainFontSize}px Lora, serif`;
+                const lines = wrapText(ctx, text, maxWidth);
+                
+                const citationFontSize = 30;
+                const citationLineHeight = 45;
+                let totalHeight = (lines.length * mainLineHeight) + (citation ? citationLineHeight + 20 : 0);
+                let currentY = (canvas.height - totalHeight) / 2;
+                
+                ctx.fillStyle = '#1e3a8a';
+                lines.forEach(line => {
+                    ctx.fillText(line.trim(), canvas.width / 2, currentY);
+                    currentY += mainLineHeight;
+                });
+                
+                if (citation) {
+                    currentY += 20; // Add a bit of space
+                    ctx.font = `normal ${citationFontSize}px Lora, serif`;
+                    ctx.fillStyle = '#60a5fa';
+                    ctx.fillText(citation, canvas.width / 2, currentY);
+                }
+                
+                resolve(canvas.toDataURL('image/png'));
+            });
+        }
+
+        function createLaTextGraphic(hook) {
+             return new Promise((resolve, reject) => {
+                const svg = `<svg width="1080" height="1080" viewBox="0 0 1080 1080" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#1e3a8a"/><stop offset="1" stop-color="#111827"/></linearGradient></defs><rect width="100%" height="100%" fill="url(#g)"/><foreignObject x="100" y="100" width="880" height="880"><div xmlns="http://www.w3.org/1999/xhtml" style="display:flex;align-items:center;justify-content:center;text-align:center;height:100%;font-family:'Playfair Display',serif;font-size:90px;font-weight:bold;color:white;line-height:1.2;">${escapeHTML(hook)}</div></foreignObject><text x="540" y="1020" dominant-baseline="middle" text-anchor="middle" style="font-family:'Inter',sans-serif;font-weight:600;font-size:32px;fill:#9ca3af;">@loveInspireAction</text></svg>`;
+                const svgDataUrl = `data:image/svg+xml;base64,${btoa(svg)}`;
+
+                const canvas = document.createElement('canvas');
+                canvas.width = 1080;
+                canvas.height = 1080;
+                const ctx = canvas.getContext('2d');
+
+                const img = new Image();
+                img.onload = () => {
+                    ctx.drawImage(img, 0, 0);
+                    resolve(canvas.toDataURL('image/png'));
+                };
+                img.onerror = (err) => {
+                    console.error("SVG to PNG conversion failed:", err);
+                    reject(new Error("Failed to convert graphic to PNG."));
+                };
+                img.src = svgDataUrl;
+            });
+        }
+
+        function toggleLoading(isLoading, message, persona) {
+            const [btn, btnText, spinner] = (persona === 'fg') 
+                ? [generateBtnFg, generateBtnTextFg, generateSpinnerFg]
+                : [generateBtnLa, generateBtnLa, null];
+            
+            btn.disabled = isLoading;
+            if(btnText) btnText.textContent = isLoading ? message : (persona === 'fg' ? 'Generate Content' : 'Generate Post');
+            if(spinner) spinner.classList.toggle('hidden', !isLoading);
+        }
+
+        function showMessageBox(message) {
+            messageText.textContent = message;
+            messageBox.classList.remove('hidden');
+        };
+        
+        function escapeHTML(str) {
+            if (!str) return '';
+            const p = document.createElement("p");
+            p.appendChild(document.createTextNode(str));
+            return p.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+
+        // --- Gemini & Other Feature Handlers ---
+        async function handleSuggestIdeasClick() {
+            ideasModal.classList.remove('hidden');
+            ideasList.innerHTML = `<div class="loader-container !border-none"><div class="loading-spinner !border-blue-500 !border-l-transparent"></div></div>`;
+            try {
+                const prompt = `You are a content strategist for a Christian influencer named Amara. Suggest 5 creative and engaging Instagram post ideas for her. For each idea, provide a "title" and a brief "description". The ideas should cover themes of faith, grace, personal testimony, and modern Christian living. Return a JSON array of objects.`;
+                const ideas = await callTextAPI(prompt, true);
+                
+                ideasList.innerHTML = ideas.map(idea => `
+                    <div class="bg-white p-4 rounded-lg shadow-sm border">
+                        <h3 class="font-bold text-lg">${escapeHTML(idea.title)}</h3>
+                        <p class="text-gray-600 my-2">${escapeHTML(idea.description)}</p>
+                        <button class="use-idea-btn text-sm font-bold text-blue-600 hover:text-blue-800" data-title="${escapeHTML(idea.title)}">Use this idea &rarr;</button>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                console.error("Failed to suggest ideas:", error);
+                ideasList.innerHTML = `<p class="text-center text-red-500">Could not generate ideas. Please try again.</p>`;
+            }
+        }
+
+        async function handleAnalyzeImpactClick(e) {
+            const button = e.target.closest('#analyze-impact-btn');
+            if (!button) return;
+
+            const story = button.dataset.story;
+            const contentDiv = document.getElementById('impact-analysis-content');
+            contentDiv.innerHTML = `<div class="loader-container !border-none"><div class="loader"></div></div>`;
+
+            try {
+                const prompt = `Based on the following story of volunteer action: "${story}", analyze the potential positive impact. Describe the short-term benefits for the community and the long-term ripple effects. Present this in a concise, inspiring summary of 2-3 bullet points that could be used in a follow-up post or report. Use markdown for bullet points.`;
+                const analysis = await callTextAPI(prompt, false);
+                contentDiv.innerHTML = `<div class="text-gray-300 prose prose-invert">${analysis.replace(/\n/g, '<br>')}</div>`;
+            } catch (error) {
+                console.error("Failed to analyze impact:", error);
+                contentDiv.innerHTML = `<p class="text-red-400">Could not analyze impact at this time.</p>`;
+            }
+        }
+
+        function handleSearchClick() {
+            searchPage = 1;
+            searchModal.classList.remove('hidden');
+            searchResultsList.innerHTML = `<div class="loader-container" style="min-height: 200px;"><div class="loader"></div><p class="mt-4 text-gray-400">Searching...</p></div>`;
+            loadMoreBtn.classList.add('hidden');
+            fetchAndDisplayNews(false);
+        }
+        
+        async function handleSuggestThemeClick() {
+            suggestThemeBtn.disabled = true;
+            suggestionSpinner.classList.remove('hidden');
+            try {
+                const prompt = "Suggest one single, uplifting Christian theme for an Instagram post. Examples: 'Unwavering Faith', 'The Power of Prayer', 'Finding Peace in Chaos'. Be concise.";
+                const theme = await callTextAPI(prompt, false);
+                themeInput.value = theme.replace(/"/g, '').trim();
+            } catch (error) {
+                console.error("Failed to suggest theme:", error);
+                showMessageBox("Sorry, I couldn't come up with a theme right now.");
+            } finally {
+                suggestThemeBtn.disabled = false;
+                suggestionSpinner.classList.add('hidden');
+            }
+        }
+
+        function handleLoadMoreClick() {
+            searchPage++;
+            loadMoreBtn.querySelector('span').textContent = 'Loading...';
+            loadMoreBtn.disabled = true;
+            fetchAndDisplayNews(true);
+        }
+
+        function handleUseStoryClick(e) {
+            const useButton = e.target.closest('.use-story-btn');
+            if (useButton) {
+                const title = useButton.dataset.title;
+                const snippet = useButton.dataset.snippet;
+                storyPromptEl.value = `A story about volunteers, inspired by this real event: ${title}. ${snippet}`;
+                partnerNameEl.value = title.split(' to ')[0].split(' Unite')[0];
+                searchModal.classList.add('hidden');
+            }
+        }
+
+        function handleCopyClick(e) {
+            const copyButton = e.target.closest('.copy-btn');
+            if (copyButton) {
+                const textToCopy = copyButton.dataset.copyText;
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                    const originalContent = copyButton.innerHTML;
+                    copyButton.textContent = 'Copied!';
+                    setTimeout(() => { copyButton.innerHTML = originalContent; }, 2000);
+                }).catch(err => console.error('Failed to copy text: ', err));
+            }
+        }
+
+        function fetchAndDisplayNews(append = false) {
+            const resultsPerPage = 4;
+            const startIndex = (searchPage - 1) * resultsPerPage;
+            const results = NEWS_STORIES.slice(startIndex, startIndex + resultsPerPage);
+            
+            if (!append) searchResultsList.innerHTML = '';
+            if (results.length === 0) {
+                if (!append) searchResultsList.innerHTML = `<p class="text-center text-gray-400">No more stories found.</p>`;
+                loadMoreBtn.classList.add('hidden');
+                return;
+            }
+
+            let resultsHtml = results.map(result => `
+                <div class="bg-gray-800 p-4 rounded-lg transition-colors hover:bg-gray-700">
+                    <a href="${result.url}" target="_blank" rel="noopener noreferrer" class="font-bold text-lg text-blue-400 hover:underline">${escapeHTML(result.title)}</a>
+                    <p class="text-gray-400 my-2">${escapeHTML(result.snippet)}</p>
+                    <button class="use-story-btn text-sm font-bold text-green-400 hover:text-green-300" data-title="${escapeHTML(result.title)}" data-snippet="${escapeHTML(result.snippet)}">Use this story &rarr;</button>
+                </div>`).join('');
+            
+            searchResultsList.innerHTML += resultsHtml;
+            loadMoreBtn.classList.toggle('hidden', (startIndex + resultsPerPage) >= NEWS_STORIES.length);
+            loadMoreBtn.querySelector('span').textContent = 'Load More Stories';
+            loadMoreBtn.disabled = false;
+        }
+
+        // --- Firestore & History Management ---
+        function createThumbnail(base64Url, width = 200, height = 200) {
+            return new Promise((resolve, reject) => {
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                const img = new Image();
+                img.onload = () => {
+                    ctx.drawImage(img, 0, 0, width, height);
+                    resolve(canvas.toDataURL('image/jpeg', 0.7)); // Compress as JPEG
+                };
+                img.onerror = reject;
+                img.src = base64Url;
+            });
+        }
+
+        async function saveContent(content) {
+            try {
+                let firstImage = content.imageUrl || content.imageUrls?.[0] || null;
+                let thumbnail = null;
+                if (firstImage) {
+                    thumbnail = await createThumbnail(firstImage);
+                }
+
+                const docToSave = { ...content, createdAt: serverTimestamp(), thumbnail };
+                delete docToSave.imageUrl; 
+                delete docToSave.imageUrls;
+                
+                const historyCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/unifiedContentHistory`);
+                await addDoc(historyCollectionRef, docToSave);
+            } catch (error) {
+                console.error("Error saving to Firestore:", error);
+                showMessageBox(`Failed to save content to history: ${error.message}`);
+            }
+        }
+        
+        function renderHistory(historyData) {
+            historyPanel.innerHTML = '';
+            if (historyData.length === 0) {
+                historyPanel.appendChild(historyPlaceholder);
+                return;
+            }
+            historyData.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+            historyData.forEach(item => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'history-item bg-white p-3 rounded-lg shadow-sm flex items-center space-x-3 cursor-pointer';
+                const date = item.createdAt ? item.createdAt.toDate().toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : '';
+                const isFg = item.persona === 'faith_grace';
+                const icon = isFg ? '🕊️' : '❤️';
+                
+                itemDiv.innerHTML = `
+                    <div class="w-12 h-12 flex-shrink-0 bg-gray-200 rounded-md flex items-center justify-center">
+                       ${item.thumbnail ? `<img src="${item.thumbnail}" class="w-full h-full object-cover rounded-md">` : icon}
+                    </div>
+                    <div class="flex-1 overflow-hidden">
+                        <p class="font-semibold text-sm truncate text-gray-800">${item.title || (isFg ? item.postType.replace(/_/g, ' ') : item.textHook || "Volunteer Post")}</p>
+                        <p class="text-xs text-gray-500">${date}</p>
+                    </div>
+                `;
+                itemDiv.addEventListener('click', () => renderOutput(item));
+                historyPanel.appendChild(itemDiv);
+            });
+        }
+
+        async function initializeFirebase() {
+            if (!firebaseConfig.apiKey) {
+                authStatus.textContent = 'History disabled.';
+                generateBtnFg.disabled = true;
+                generateBtnLa.disabled = true;
+                return;
+            }
+            try {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                setLogLevel('error');
+                onAuthStateChanged(auth, user => {
+                    if (user) {
+                        userId = user.uid;
+                        isAuthReady = true;
+                        authStatus.textContent = `History Connected`;
+                        authStatus.classList.add('!bg-green-100', '!text-green-800');
+                        generateBtnFg.disabled = false;
+                        generateBtnLa.disabled = false;
+                        if (unsubscribeFromHistory) unsubscribeFromHistory();
+                        const q = query(collection(db, `artifacts/${appId}/users/${userId}/unifiedContentHistory`));
+                        unsubscribeFromHistory = onSnapshot(q, snapshot => {
+                            const historyData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                            renderHistory(historyData);
+                        }, err => console.error("History snapshot error:", err));
+                    } else { isAuthReady = false; }
+                });
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Firebase init failed:", error);
+                authStatus.textContent = 'Database connection failed.';
+                generateBtnFg.disabled = true;
+                generateBtnLa.disabled = true;
+            }
+        }
+    </script>
+</body>
+</html>
