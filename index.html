@@ -624,9 +624,9 @@
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
             const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             if (!response.ok) {
-                const errorBody = await response.text();
+                const errorBody = await response.json();
                 console.error("Text API Error:", errorBody);
-                throw new Error(`Text generation API request failed: ${response.statusText}`);
+                throw new Error(`Text generation failed: ${errorBody.error?.message || response.statusText}`);
             }
             const result = await response.json();
             const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -639,9 +639,9 @@
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
             const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             if (!response.ok) {
-                const errorBody = await response.text();
+                const errorBody = await response.json();
                 console.error("Image API Error:", errorBody);
-                throw new Error(`Image generation API failed: ${response.statusText}`);
+                throw new Error(`Image generation failed: ${errorBody.error?.message || response.statusText}`);
             }
             const result = await response.json();
             if (result.predictions?.[0]?.bytesBase64Encoded) { return `data:image/png;base64,${result.predictions[0].bytesBase64Encoded}`; }
